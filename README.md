@@ -119,6 +119,32 @@ print(doc.render())
 # Output: <div class="admin-panel" data-role="administrator">Content that changes based on conditions</div>
 ```
 
+### Dynamic Classes
+
+Add CSS classes conditionally using the `classes()` method. When classes already exist, new ones are appended:
+
+```python
+from markupflow import Document
+
+doc = Document()
+
+is_admin = True
+is_active = True
+is_highlighted = False
+
+with doc.div(class_="panel"):
+    if is_admin:
+        doc.classes("admin")
+    if is_active:
+        doc.classes("active")
+    if is_highlighted:
+        doc.classes("highlighted")
+    doc.text("Panel content")
+
+print(doc.render())
+# Output: <div class="panel admin active">Panel content</div>
+```
+
 ### HTML Escaping
 
 Markupflow automatically escapes content for security:
