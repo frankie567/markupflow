@@ -161,11 +161,7 @@ class _TagContext:
             raise TagAlreadyOpenedError()
 
         # Check for existing class attribute (handle both class_ and class)
-        existing_class = (
-            self._attrs.get("class_")
-            or self._attrs.get("class")
-            or self._attrs.get("classes")
-        )
+        existing_class = self._attrs.get("class_") or self._attrs.get("class")
 
         if existing_class:
             # Append to existing classes
@@ -314,7 +310,8 @@ class Document:
             value: The attribute value
 
         Raises:
-            RuntimeError: If there is no current tag context or if the tag has already been opened
+            NoTagContextError: If there is no current tag context
+            TagAlreadyOpenedError: If the tag has already been opened
 
         Example:
             with doc.div() as div_tag:
