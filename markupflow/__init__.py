@@ -146,6 +146,34 @@ class _TagContext:
 
         self._attrs[name] = value
 
+    def add_class(self, class_name: str) -> None:
+        """Add a class to this tag context.
+
+        If classes already exist, the new class is appended.
+
+        Args:
+            class_name: The class name to add
+
+        Raises:
+            TagAlreadyOpenedError: If the tag has already been opened
+        """
+        if self._opened:
+            raise TagAlreadyOpenedError()
+
+        # Check for existing class attribute (handle both class_ and class)
+        existing_class = (
+            self._attrs.get("class_")
+            or self._attrs.get("class")
+            or self._attrs.get("classes")
+        )
+
+        if existing_class:
+            # Append to existing classes
+            self._attrs["class_"] = f"{existing_class} {class_name}"
+        else:
+            # Set new class
+            self._attrs["class_"] = class_name
+
     def __enter__(self) -> _TagContext:
         if not self._self_closing:
             self._document._tag_stack.append(self._tag_name)
@@ -299,6 +327,33 @@ class Document:
             raise NoTagContextError()
 
         self._context_stack[-1].add_attr(name, value)
+
+    def classes(self, class_name: str) -> None:
+        """Add a class to the current tag.
+
+        This method allows dynamic addition of classes to the currently
+        open tag context. If classes already exist, the new class is appended.
+
+        Args:
+            class_name: The class name to add
+
+        Raises:
+            NoTagContextError: If there is no current tag context
+            TagAlreadyOpenedError: If the tag has already been opened
+
+        Example:
+            with doc.div(class_="container"):
+                if user_is_admin:
+                    doc.classes("admin")
+                if is_active:
+                    doc.classes("active")
+                doc.text("Content")
+            # Result: <div class="container admin active">Content</div>
+        """
+        if not self._context_stack:
+            raise NoTagContextError()
+
+        self._context_stack[-1].add_class(class_name)
 
     def render(self) -> str:
         """Render the document to an HTML string.

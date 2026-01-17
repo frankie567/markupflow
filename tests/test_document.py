@@ -459,3 +459,124 @@ def test_none_content_handling():
     html = doc.render()
     expected = "<div >Some text</div>"  # No title attribute when value is None
     assert html == expected
+
+
+def test_classes_function():
+    """Test the classes() function for adding classes to current tag."""
+    doc = Document()
+
+    # Basic classes() usage
+    with doc.div():
+        doc.classes("container")
+        doc.text("Content")
+
+    html = doc.render()
+    expected = '<div class="container">Content</div>'
+    assert html == expected
+
+
+def test_classes_appends_to_existing():
+    """Test that classes() appends to existing classes."""
+    doc = Document()
+
+    # With initial class
+    with doc.div(class_="container"):
+        doc.classes("active")
+        doc.classes("highlighted")
+        doc.text("Content")
+
+    html = doc.render()
+    expected = '<div class="container active highlighted">Content</div>'
+    assert html == expected
+
+
+def test_classes_multiple_calls():
+    """Test multiple classes() calls."""
+    doc = Document()
+
+    with doc.div():
+        doc.classes("container")
+        doc.classes("fluid")
+        doc.classes("bordered")
+        doc.text("Content")
+
+    html = doc.render()
+    expected = '<div class="container fluid bordered">Content</div>'
+    assert html == expected
+
+
+def test_classes_with_conditional_logic():
+    """Test classes() with conditional logic - the main use case."""
+    doc = Document()
+
+    is_admin = True
+    is_active = True
+    is_highlighted = False
+
+    with doc.div(class_="panel"):
+        if is_admin:
+            doc.classes("admin")
+        if is_active:
+            doc.classes("active")
+        if is_highlighted:
+            doc.classes("highlighted")
+        doc.text("Panel Content")
+
+    html = doc.render()
+    expected = '<div class="panel admin active">Panel Content</div>'
+    assert html == expected
+
+
+def test_classes_with_nested_tags():
+    """Test classes() with nested tag structures."""
+    doc = Document()
+
+    with doc.div(class_="outer"):
+        doc.classes("container")
+
+        with doc.p():
+            doc.classes("inner")
+            doc.classes("text")
+            doc.text("Paragraph")
+
+        doc.text("Outer text")
+
+    html = doc.render()
+    expected = '<div class="outer container"><p class="inner text">Paragraph</p>Outer text</div>'
+    assert html == expected
+
+
+def test_classes_error_cases():
+    """Test error cases for classes() function."""
+    doc = Document()
+
+    # Test calling classes() outside of a tag context
+    with pytest.raises(NoTagContextError, match="No current tag context"):
+        doc.classes("test")
+
+    # Test calling classes() after tag has been opened
+    with doc.div():
+        doc.text("This opens the tag")
+        with pytest.raises(TagAlreadyOpenedError, match="Tag already opened"):
+            doc.classes("test")
+
+
+def test_classes_with_shortcuts():
+    """Test classes() works with tag shortcuts."""
+    doc = Document()
+
+    with doc.div(class_="container"):
+        doc.classes("fluid")
+
+        with doc.h1():
+            doc.classes("title")
+            doc.classes("large")
+            doc.text("Title")
+
+        with doc.p(class_="text"):
+            doc.classes("muted")
+            doc.text("Description")
+
+    html = doc.render()
+    expected = '<div class="container fluid"><h1 class="title large">Title</h1><p class="text muted">Description</p></div>'
+    assert html == expected
