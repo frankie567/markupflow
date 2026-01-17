@@ -1,0 +1,64 @@
+site_name: Markupflow
+site_description: Generate HTML, the Pythonic way
+
+repo_url: https://github.com/frankie567/markupflow
+repo_name: frankie567/markupflow
+
+theme:
+    name: material
+    icon:
+        logo: material/code-tags
+    palette:
+        # Palette toggle for automatic mode
+        - media: "(prefers-color-scheme)"
+          toggle:
+              icon: material/brightness-auto
+              name: Switch to light mode
+
+        # Palette toggle for light mode
+        - media: "(prefers-color-scheme: light)"
+          scheme: default
+          primary: orange
+          accent: orange
+          toggle:
+              icon: material/brightness-7
+              name: Switch to dark mode
+
+        # Palette toggle for dark mode
+        - media: "(prefers-color-scheme: dark)"
+          scheme: slate
+          primary: orange
+          accent: orange
+          toggle:
+              icon: material/brightness-4
+              name: Switch to light mode
+
+markdown_extensions:
+    - toc:
+          permalink: true
+    - pymdownx.highlight:
+          anchor_linenums: true
+    - pymdownx.tasklist:
+          custom_checkbox: true
+    - pymdownx.inlinehilite
+    - pymdownx.snippets
+    - pymdownx.superfences
+
+plugins:
+    - search
+    - mkdocstrings:
+          handlers:
+              python:
+                  inventories:
+                      - https://docs.python.org/3.12/objects.inv
+                  options:
+                      docstring_style: google
+
+watch:
+    - docs
+    - markupflow
+
+nav:
+    - About: index.md
+    - Reference:
+          - markupflow: reference/markupflow.md
