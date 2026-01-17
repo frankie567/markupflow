@@ -6,7 +6,7 @@ from typing import Any
 
 """Generate HTML, the Pythonic way"""
 
-__version__ = "0.0.0"
+__version__ = "0.0.1"
 
 
 class MarkupFlowError(Exception):
