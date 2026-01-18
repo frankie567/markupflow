@@ -270,13 +270,13 @@ class Fragment:
         return context
 
     def text(self, content: AttrValue) -> None:
-        """Add text content to the document.
+        """Add text content to the fragment.
 
         Args:
             content: The text content to add (will be escaped for safety)
 
         Example:
-            doc.text("Hello & welcome!")  # Becomes "Hello &amp; welcome!"
+            fragment.text("Hello & welcome!")  # Becomes "Hello &amp; welcome!"
         """
         if content is not None:
             # Ensure current tag is opened before adding content
@@ -285,7 +285,7 @@ class Fragment:
             self._parts.append(_escape_text(content))
 
     def raw(self, content: AttrValue) -> None:
-        """Add raw HTML content to the document without escaping.
+        """Add raw HTML content to the fragment without escaping.
 
         WARNING: This method does not escape content. Only use with trusted input.
 
@@ -293,7 +293,7 @@ class Fragment:
             content: The raw HTML content to add
 
         Example:
-            doc.raw("<em>Already formatted</em>")
+            fragment.raw("<em>Already formatted</em>")
         """
         if content is not None:
             # Ensure current tag is opened before adding content
