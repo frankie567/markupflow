@@ -444,7 +444,7 @@ def test_none_content_handling():
         frag.text("Some text")
 
     html = frag.render()
-    expected = "<div >Some text</div>"  # No title attribute when value is None
+    expected = "<div>Some text</div>"  # No title attribute when value is None
     assert html == expected
 
 

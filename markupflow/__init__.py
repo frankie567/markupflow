@@ -119,11 +119,12 @@ class _TagContext:
 
             # Build the opening tag
             if self._attrs:
-                attr_str = " " + " ".join(
+                attr_list = [
                     f'{_convert_attr_name(k)}="{_escape_attr_value(v)}"'
                     for k, v in self._attrs.items()
                     if v is not None
-                )
+                ]
+                attr_str = " " + " ".join(attr_list) if attr_list else ""
             else:
                 attr_str = ""
 
