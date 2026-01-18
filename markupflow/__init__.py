@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import html
 import re
 from typing import Any
@@ -193,6 +194,43 @@ class _TagContext:
             self._fragment._context_stack.pop()
 
 
+class _FragmentContextManager:
+    """Context manager wrapper for fragment() method.
+
+    This allows fragment() to accept context managers and automatically
+    append the fragment content when the context exits.
+    """
+
+    __slots__ = ("_parent", "_context_manager", "_fragment")
+
+    def __init__(
+        self,
+        parent: Fragment,
+        context_manager: contextlib.AbstractContextManager[Fragment],
+    ) -> None:
+        self._parent = parent
+        self._context_manager = context_manager
+        self._fragment: Fragment | None = None
+
+    def __enter__(self) -> Fragment:
+        # Enter the context manager to get the fragment
+        self._fragment = self._context_manager.__enter__()
+        return self._fragment
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        # Exit the context manager first
+        self._context_manager.__exit__(exc_type, exc_val, exc_tb)
+
+        # Only append if no exception occurred
+        if exc_type is None and self._fragment is not None:
+            # Ensure current tag is opened before adding fragment content
+            if self._parent._context_stack:
+                self._parent._context_stack[-1]._ensure_opened()
+
+            # Append the fragment's content to the parent
+            self._parent._parts.extend(self._fragment._parts)
+
+
 class Fragment:
     """A minimal HTML fragment builder with context manager support.
 
@@ -367,29 +405,48 @@ class Fragment:
         self._tag_stack.clear()
         self._context_stack.clear()
 
-    def fragment(self, frag: Fragment) -> Fragment:
+    def fragment(
+        self, frag: Fragment | contextlib.AbstractContextManager[Fragment]
+    ) -> Fragment | _FragmentContextManager:
         """Insert another fragment into this fragment.
 
         This method allows composing fragments together, enabling reusable
-        HTML components.
+        HTML components. It can accept either a Fragment instance or a
+        context manager that yields a Fragment.
 
         Args:
-            frag: The Fragment instance to insert
+            frag: A Fragment instance or a context manager that yields a Fragment
 
         Returns:
-            The inserted Fragment instance (useful for context manager usage)
+            The Fragment instance if a Fragment was passed, or a context manager
+            wrapper if a context manager was passed
 
         Example:
-            # Create a reusable fragment
+            # With a finished fragment
             callout = Fragment()
             with callout.div(class_="callout"):
                 callout.text("Warning")
 
-            # Insert it into another fragment
             doc = Fragment()
             with doc.div():
                 doc.fragment(callout)
+
+            # With a context manager (expandable fragment)
+            @contextlib.contextmanager
+            def button():
+                btn = Fragment()
+                with btn.button():
+                    yield btn
+
+            with doc.fragment(button()) as btn:
+                btn.text("Click me")
         """
+        # Check if it's a context manager
+        if hasattr(frag, "__enter__") and hasattr(frag, "__exit__"):
+            # Return a wrapper that will append the fragment on exit
+            return _FragmentContextManager(self, frag)
+
+        # It's a Fragment instance
         # Ensure current tag is opened before adding fragment content
         if self._context_stack:
             self._context_stack[-1]._ensure_opened()
@@ -397,7 +454,7 @@ class Fragment:
         # Append the fragment's content to this fragment
         self._parts.extend(frag._parts)
 
-        # Return the fragment for context manager usage
+        # Return the fragment for potential further use
         return frag
 
     def __str__(self) -> str:

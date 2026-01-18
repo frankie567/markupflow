@@ -676,12 +676,11 @@ def test_fragment_with_context_manager_pattern():
         with fragment.button(type=button_type):
             yield fragment
 
-    # Use the expandable fragment pattern
+    # Use the new expandable fragment pattern with doc.fragment()
     doc = Fragment()
     with doc.div():
-        with button_fragment("submit") as btn:
+        with doc.fragment(button_fragment("submit")) as btn:
             btn.text("Submit")
-        doc.fragment(btn)
 
     html = doc.render()
     expected = '<div><button type="submit">Submit</button></div>'
@@ -704,17 +703,16 @@ def test_fragment_api_from_issue():
         with fragment.button(type=button_type):
             yield fragment
 
-    # Test the proposed API
+    # Test the proposed API with the new context manager support
     doc = Fragment()
     with doc.tag("html"):
         with doc.tag("body"):
             # Finished fragment
             doc.fragment(get_callout("Warning"))
 
-            # Expandable fragment
-            with button() as f:
+            # Expandable fragment with new API
+            with doc.fragment(button()) as f:
                 f.text("Ok")
-            doc.fragment(f)
 
     html = doc.render()
     assert '<div class="callout">Warning</div>' in html
