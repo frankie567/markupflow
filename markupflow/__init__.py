@@ -655,12 +655,11 @@ def document() -> Document:
 class Document(Fragment):
     """A minimal HTML document builder with context manager support.
 
-    This class extends Fragment and provides an interface for building
-    complete HTML documents. It inherits all fragment functionality.
+    This class is a direct subclass of Fragment with no additional functionality.
+    It exists to provide a familiar API for building complete HTML documents.
 
-    The Document class includes shortcuts for common HTML tags, allowing
-    for more concise and readable code. It also supports dynamic attribute
-    addition via the attr() method.
+    Document inherits all functionality from Fragment, including shortcuts for
+    common HTML tags and support for dynamic attribute addition via the attr() method.
 
     Example:
         doc = Document()
