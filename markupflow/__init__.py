@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import html
 import re
 from typing import Any
@@ -39,6 +40,7 @@ class UnclosedTagsError(MarkupFlowError):
 __all__ = [
     "AttrValue",
     "Document",
+    "Fragment",
     "document",
     "MarkupFlowError",
     "TagAlreadyOpenedError",
@@ -96,40 +98,41 @@ class _TagContext:
     attribute addition via the attr() method.
     """
 
-    __slots__ = ("_document", "_tag_name", "_self_closing", "_attrs", "_opened")
+    __slots__ = ("_fragment", "_tag_name", "_self_closing", "_attrs", "_opened")
 
     def __init__(
         self,
-        document: Document,
+        fragment: Fragment,
         tag_name: str,
         attrs: dict[str, AttrValue],
         self_closing: bool = False,
     ) -> None:
-        self._document = document
+        self._fragment = fragment
         self._tag_name = tag_name
         self._self_closing = self_closing
         self._attrs = attrs.copy()  # Copy to avoid mutation issues
         self._opened = False
 
     def _ensure_opened(self) -> None:
-        """Ensure the opening tag has been written to the document."""
+        """Ensure the opening tag has been written to the fragment."""
         if not self._opened:
             self._opened = True
 
             # Build the opening tag
             if self._attrs:
-                attr_str = " " + " ".join(
+                attr_list = [
                     f'{_convert_attr_name(k)}="{_escape_attr_value(v)}"'
                     for k, v in self._attrs.items()
                     if v is not None
-                )
+                ]
+                attr_str = " " + " ".join(attr_list) if attr_list else ""
             else:
                 attr_str = ""
 
             if self._self_closing:
-                self._document._parts.append(f"<{self._tag_name}{attr_str} />")
+                self._fragment._parts.append(f"<{self._tag_name}{attr_str} />")
             else:
-                self._document._parts.append(f"<{self._tag_name}{attr_str}>")
+                self._fragment._parts.append(f"<{self._tag_name}{attr_str}>")
 
     def add_attr(self, name: str, value: AttrValue) -> None:
         """Add an attribute to this tag context.
@@ -172,8 +175,8 @@ class _TagContext:
 
     def __enter__(self) -> _TagContext:
         if not self._self_closing:
-            self._document._tag_stack.append(self._tag_name)
-            self._document._context_stack.append(self)
+            self._fragment._tag_stack.append(self._tag_name)
+            self._fragment._context_stack.append(self)
         else:
             # Self-closing tags are opened immediately
             self._ensure_opened()
@@ -184,45 +187,75 @@ class _TagContext:
             # Ensure the tag is opened before closing
             self._ensure_opened()
 
-            closing_tag = self._document._tag_stack.pop()
-            self._document._parts.append(f"</{closing_tag}>")
+            closing_tag = self._fragment._tag_stack.pop()
+            self._fragment._parts.append(f"</{closing_tag}>")
 
             # Remove this context from the stack
-            self._document._context_stack.pop()
+            self._fragment._context_stack.pop()
 
 
-class Document:
-    """A minimal HTML document builder with context manager support.
+class _FragmentContextManager:
+    """Context manager wrapper for fragment() method.
 
-    This class provides an efficient way to build HTML documents using
+    This allows fragment() to accept context managers and automatically
+    append the fragment content when the context exits.
+    """
+
+    __slots__ = ("_parent", "_context_manager", "_fragment")
+
+    def __init__(
+        self,
+        parent: Fragment,
+        context_manager: contextlib.AbstractContextManager[Fragment],
+    ) -> None:
+        self._parent = parent
+        self._context_manager = context_manager
+        self._fragment: Fragment | None = None
+
+    def __enter__(self) -> Fragment:
+        # Enter the context manager to get the fragment
+        self._fragment = self._context_manager.__enter__()
+        return self._fragment
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        # Exit the context manager first
+        self._context_manager.__exit__(exc_type, exc_val, exc_tb)
+
+        # Only append if no exception occurred
+        if exc_type is None and self._fragment is not None:
+            # Ensure current tag is opened before adding fragment content
+            if self._parent._context_stack:
+                self._parent._context_stack[-1]._ensure_opened()
+
+            # Append the fragment's content to the parent
+            self._parent._parts.extend(self._fragment._parts)
+
+
+class Fragment:
+    """A minimal HTML fragment builder with context manager support.
+
+    This class provides an efficient way to build HTML fragments using
     context managers, with focus on performance and simplicity.
 
-    The Document class includes shortcuts for common HTML tags, allowing
+    The Fragment class includes shortcuts for common HTML tags, allowing
     for more concise and readable code. It also supports dynamic attribute
     addition via the attr() method.
 
     Example:
-        doc = Document()
-        with doc.tag("html"):
-            with doc.tag("head"):
-                with doc.tag("title"):
-                    doc.text("Hello World")
-            with doc.tag("body"):
-                with doc.h1(class_="title"):  # Shortcut for doc.tag("h1", ...)
-                    doc.text("Welcome!")
-                with doc.div() as div_tag:
-                    if some_condition:
-                        doc.attr("class", "special")  # Dynamic attribute
-                    with doc.p():
-                        doc.text("This is a paragraph.")
+        fragment = Fragment()
+        with fragment.tag("div"):
+            with fragment.h1(class_="title"):  # Shortcut for fragment.tag("h1", ...)
+                fragment.text("Welcome!")
+            with fragment.p():
+                fragment.text("This is a paragraph.")
 
-        html_output = doc.render()
+        html_output = fragment.render()
     """
 
     __slots__ = ("_parts", "_tag_stack", "_context_stack")
 
     def __init__(self) -> None:
-        """Initialize an empty document."""
+        """Initialize an empty fragment."""
         self._parts: list[str] = []
         self._tag_stack: list[str] = []
         self._context_stack: list[_TagContext] = []
@@ -367,10 +400,62 @@ class Document:
         return "".join(self._parts)
 
     def clear(self) -> None:
-        """Clear the document content, allowing reuse of the same Document object."""
+        """Clear the fragment content, allowing reuse of the same Fragment object."""
         self._parts.clear()
         self._tag_stack.clear()
         self._context_stack.clear()
+
+    def fragment(
+        self, frag: Fragment | contextlib.AbstractContextManager[Fragment]
+    ) -> Fragment | _FragmentContextManager:
+        """Insert another fragment into this fragment.
+
+        This method allows composing fragments together, enabling reusable
+        HTML components. It can accept either a Fragment instance or a
+        context manager that yields a Fragment.
+
+        Args:
+            frag: A Fragment instance or a context manager that yields a Fragment
+
+        Returns:
+            The Fragment instance if a Fragment was passed, or a context manager
+            wrapper if a context manager was passed
+
+        Example:
+            # With a finished fragment
+            callout = Fragment()
+            with callout.div(class_="callout"):
+                callout.text("Warning")
+
+            doc = Fragment()
+            with doc.div():
+                doc.fragment(callout)
+
+            # With a context manager (expandable fragment)
+            @contextlib.contextmanager
+            def button():
+                btn = Fragment()
+                with btn.button():
+                    yield btn
+
+            with doc.fragment(button()) as btn:
+                btn.text("Click me")
+        """
+        # Check if it's a context manager
+        if hasattr(frag, "__enter__") and hasattr(frag, "__exit__"):
+            # Return a wrapper that will append the fragment on exit
+            return _FragmentContextManager(self, frag)
+
+        # It's a Fragment instance
+        # Ensure current tag is opened before adding fragment content
+        if self._context_stack:
+            self._context_stack[-1]._ensure_opened()
+
+        # Append the fragment's content to this fragment
+        self._parts.extend(frag._parts)
+
+        # Return the fragment for potential further use
+        return frag
 
     def __str__(self) -> str:
         """Return the rendered HTML when converting to string."""
@@ -565,3 +650,33 @@ def document() -> Document:
             # ... build document
     """
     return Document()
+
+
+class Document(Fragment):
+    """A minimal HTML document builder with context manager support.
+
+    This class is a direct subclass of Fragment with no additional functionality.
+    It exists to provide a familiar API for building complete HTML documents.
+
+    Document inherits all functionality from Fragment, including shortcuts for
+    common HTML tags and support for dynamic attribute addition via the attr() method.
+
+    Example:
+        doc = Document()
+        with doc.tag("html"):
+            with doc.tag("head"):
+                with doc.tag("title"):
+                    doc.text("Hello World")
+            with doc.tag("body"):
+                with doc.h1(class_="title"):
+                    doc.text("Welcome!")
+                with doc.div() as div_tag:
+                    if some_condition:
+                        doc.attr("class", "special")
+                    with doc.p():
+                        doc.text("This is a paragraph.")
+
+        html_output = doc.render()
+    """
+
+    __slots__ = ()

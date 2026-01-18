@@ -239,6 +239,118 @@ except MarkupFlowError as e:
     print(f"Caught markupflow error: {e}")
 ```
 
+## Reusable Components with Fragments
+
+Markupflow supports creating reusable HTML components using the `Fragment` class. Fragments allow you to define components independently without carrying document instances around.
+
+### Creating Finished Fragments
+
+Finished fragments are complete, self-contained HTML components:
+
+```python
+from markupflow import Fragment, Document
+
+def alert(message, severity="info"):
+    """Create an alert component."""
+    fragment = Fragment()
+    with fragment.div(class_=f"alert alert-{severity}"):
+        fragment.text(message)
+    return fragment
+
+def card(title, content):
+    """Create a card component."""
+    fragment = Fragment()
+    with fragment.div(class_="card"):
+        with fragment.div(class_="card-header"):
+            with fragment.h3():
+                fragment.text(title)
+        with fragment.div(class_="card-body"):
+            fragment.text(content)
+    return fragment
+
+# Use fragments in a document
+doc = Document()
+with doc.tag("body"):
+    doc.fragment(alert("Welcome!", "success"))
+    doc.fragment(alert("Please note", "warning"))
+    doc.fragment(card("Getting Started", "Learn the basics"))
+
+print(doc.render())
+```
+
+### Creating Expandable Fragments
+
+Expandable fragments use context managers to allow dynamic content addition:
+
+```python
+import contextlib
+from markupflow import Fragment, Document
+
+@contextlib.contextmanager
+def button(btn_type="button"):
+    """Create an expandable button fragment."""
+    fragment = Fragment()
+    with fragment.button(type=btn_type, class_="btn"):
+        yield fragment
+
+@contextlib.contextmanager
+def card_with_body(title):
+    """Create a card where the body can be filled dynamically."""
+    fragment = Fragment()
+    with fragment.div(class_="card"):
+        with fragment.div(class_="card-header"):
+            fragment.text(title)
+        with fragment.div(class_="card-body"):
+            yield fragment
+
+# Use expandable fragments
+doc = Document()
+with doc.tag("body"):
+    # Button with custom content
+    with doc.fragment(button("submit")) as btn:
+        btn.text("Submit Form")
+    
+    # Card with dynamic body content
+    with doc.fragment(card_with_body("User Info")) as card_body:
+        with card_body.p():
+            card_body.text("Name: John Doe")
+        with card_body.p():
+            card_body.text("Email: john@example.com")
+
+print(doc.render())
+```
+
+### Composing Fragments
+
+Fragments can contain other fragments, enabling complex component hierarchies:
+
+```python
+from markupflow import Fragment, Document
+
+def icon(name):
+    """Create an icon fragment."""
+    fragment = Fragment()
+    with fragment.span(class_=f"icon icon-{name}"):
+        fragment.text(f"[{name}]")
+    return fragment
+
+def button_with_icon(text, icon_name):
+    """Create a button with an icon."""
+    fragment = Fragment()
+    with fragment.button(class_="btn"):
+        fragment.fragment(icon(icon_name))
+        fragment.text(f" {text}")
+    return fragment
+
+# Use composed fragments
+doc = Document()
+with doc.tag("body"):
+    doc.fragment(button_with_icon("Save", "save"))
+    doc.fragment(button_with_icon("Delete", "trash"))
+
+print(doc.render())
+```
+
 ## Development
 
 ### Setup environment
