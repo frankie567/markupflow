@@ -663,3 +663,59 @@ def test_fragment_str_method():
 
     assert str(frag) == "<div>Test</div>"
     assert str(frag) == frag.render()
+
+
+def test_fragment_with_context_manager_pattern():
+    """Test the expandable fragment pattern using context managers."""
+    import contextlib
+
+    @contextlib.contextmanager
+    def button_fragment(button_type="button"):
+        """Create an expandable button fragment."""
+        fragment = Fragment()
+        with fragment.button(type=button_type):
+            yield fragment
+
+    # Use the expandable fragment pattern
+    doc = Fragment()
+    with doc.div():
+        with button_fragment("submit") as btn:
+            btn.text("Submit")
+        doc.fragment(btn)
+
+    html = doc.render()
+    expected = '<div><button type="submit">Submit</button></div>'
+    assert html == expected
+
+
+def test_fragment_api_from_issue():
+    """Test the exact API pattern proposed in the issue."""
+    import contextlib
+
+    def get_callout(title):
+        fragment = Fragment()
+        with fragment.div(class_="callout"):
+            fragment.text(title)
+        return fragment
+
+    @contextlib.contextmanager
+    def button(button_type="button"):
+        fragment = Fragment()
+        with fragment.button(type=button_type):
+            yield fragment
+
+    # Test the proposed API
+    doc = Fragment()
+    with doc.tag("html"):
+        with doc.tag("body"):
+            # Finished fragment
+            doc.fragment(get_callout("Warning"))
+
+            # Expandable fragment
+            with button() as f:
+                f.text("Ok")
+            doc.fragment(f)
+
+    html = doc.render()
+    assert '<div class="callout">Warning</div>' in html
+    assert '<button type="button">Ok</button>' in html

@@ -4,7 +4,6 @@ This module contains tests specifically for the Document class.
 Most functionality is tested in test_fragment.py since Document inherits from Fragment.
 """
 
-
 from markupflow import (
     Document,
     document,
