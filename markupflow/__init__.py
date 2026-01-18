@@ -224,7 +224,7 @@ class Fragment:
     __slots__ = ("_parts", "_tag_stack", "_context_stack")
 
     def __init__(self) -> None:
-        """Initialize an empty document."""
+        """Initialize an empty fragment."""
         self._parts: list[str] = []
         self._tag_stack: list[str] = []
         self._context_stack: list[_TagContext] = []
@@ -355,13 +355,13 @@ class Fragment:
         self._context_stack[-1].add_class(class_name)
 
     def render(self) -> str:
-        """Render the document to an HTML string.
+        """Render the fragment to an HTML string.
 
         Returns:
-            The complete HTML document as a string
+            The complete HTML fragment as a string
 
         Raises:
-            RuntimeError: If there are unclosed tags
+            UnclosedTagsError: If there are unclosed tags
         """
         if self._tag_stack:
             raise UnclosedTagsError()
@@ -369,7 +369,7 @@ class Fragment:
         return "".join(self._parts)
 
     def clear(self) -> None:
-        """Clear the document content, allowing reuse of the same Document object."""
+        """Clear the fragment content, allowing reuse of the same Fragment object."""
         self._parts.clear()
         self._tag_stack.clear()
         self._context_stack.clear()
@@ -569,10 +569,10 @@ class Fragment:
             pass
 
     def fragment(self, fragment: Fragment) -> None:
-        """Insert a fragment into the document.
+        """Insert a fragment into this fragment or document.
 
         This method renders the fragment and inserts its HTML content
-        into the current document at the current position.
+        at the current position.
 
         Args:
             fragment: The Fragment instance to insert
