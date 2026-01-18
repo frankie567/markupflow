@@ -835,3 +835,71 @@ def test_fragment_composition_example():
     html = doc.render()
     expected = "<html><body><div>Warning</div></body></html>"
     assert html == expected
+
+
+def test_fragment_as_context_manager():
+    """Test using fragment() as a context manager to add dynamic content."""
+    btn_frag = Fragment()
+
+    doc = Document()
+    with doc.div():
+        with doc.fragment(btn_frag) as parent:
+            # Operations on parent are redirected to btn_frag
+            with parent.button(class_="btn"):
+                parent.text("Submit")
+
+    html = doc.render()
+    expected = '<div><button class="btn">Submit</button></div>'
+    assert html == expected
+
+
+def test_fragment_context_with_multiple_operations():
+    """Test multiple operations inside fragment context."""
+    frag = Fragment()
+
+    doc = Document()
+    with doc.div(class_="container"):
+        with doc.fragment(frag) as parent:
+            with parent.ul():
+                with parent.li():
+                    parent.text("Item 1")
+                with parent.li():
+                    parent.text("Item 2")
+
+    html = doc.render()
+    expected = '<div class="container"><ul><li>Item 1</li><li>Item 2</li></ul></div>'
+    assert html == expected
+
+
+def test_nested_fragment_contexts():
+    """Test nested fragment contexts."""
+    outer = Fragment()
+    inner = Fragment()
+
+    doc = Document()
+    with doc.div():
+        with doc.fragment(outer) as p1:
+            with p1.section():
+                with p1.fragment(inner) as p2:
+                    with p2.p():
+                        p2.text("Nested")
+
+    html = doc.render()
+    expected = "<div><section><p>Nested</p></section></div>"
+    assert html == expected
+
+
+def test_fragment_context_backward_compatibility():
+    """Test that direct insertion without context manager still works."""
+    # Pre-built fragment
+    frag = Fragment()
+    with frag.div(class_="callout"):
+        frag.text("Warning")
+
+    doc = Document()
+    with doc.div():
+        doc.fragment(frag)  # Not using as context manager
+
+    html = doc.render()
+    expected = '<div><div class="callout">Warning</div></div>'
+    assert html == expected

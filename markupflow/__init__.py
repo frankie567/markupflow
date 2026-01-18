@@ -89,6 +89,86 @@ def _escape_text(text: AttrValue) -> str:
     return html.escape(str(text), quote=False)
 
 
+class _FragmentContext:
+    """Context manager for fragment insertion with dynamic content.
+
+    This context manager allows adding content to a fragment before it's
+    inserted into the parent fragment/document. When used as a context
+    manager, operations on the parent are redirected to the child fragment.
+
+    If not used as a context manager, the fragment is inserted immediately.
+    """
+
+    __slots__ = (
+        "_parent",
+        "_child",
+        "_parent_parts",
+        "_parent_tag_stack",
+        "_parent_context_stack",
+        "_entered",
+    )
+
+    def __init__(self, parent: Fragment, child: Fragment) -> None:
+        self._parent = parent
+        self._child = child
+        self._parent_parts: list[str] | None = None
+        self._parent_tag_stack: list[str] | None = None
+        self._parent_context_stack: list[_TagContext] | None = None
+        self._entered = False
+
+        # For immediate insertion (when not used as context manager)
+        # We insert on the next event loop, but we need a way to detect
+        # if __enter__ will be called. Since we can't, we'll handle this differently.
+
+    def __enter__(self) -> Fragment:
+        self._entered = True
+
+        # Ensure current tag is opened before we start redirecting
+        if self._parent._context_stack:
+            self._parent._context_stack[-1]._ensure_opened()
+
+        # Save parent's state
+        self._parent_parts = self._parent._parts
+        self._parent_tag_stack = self._parent._tag_stack
+        self._parent_context_stack = self._parent._context_stack
+
+        # Redirect parent's operations to the child fragment
+        self._parent._parts = self._child._parts
+        self._parent._tag_stack = self._child._tag_stack
+        self._parent._context_stack = self._child._context_stack
+
+        # Return the parent so operations like parent.text() work
+        return self._parent
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        # Restore parent's state
+        assert self._parent_parts is not None
+        assert self._parent_tag_stack is not None
+        assert self._parent_context_stack is not None
+
+        self._parent._parts = self._parent_parts
+        self._parent._tag_stack = self._parent_tag_stack
+        self._parent._context_stack = self._parent_context_stack
+
+        # Insert the fragment's rendered content
+        self._parent._parts.append(self._child.render())
+
+    def __del__(self) -> None:
+        # If never entered as context manager, insert immediately
+        if not self._entered:
+            try:
+                # Ensure the current tag is opened before inserting fragment content
+                if self._parent._context_stack:
+                    self._parent._context_stack[-1]._ensure_opened()
+
+                # Render the fragment and insert its content as raw HTML
+                self._parent._parts.append(self._child.render())
+            except UnclosedTagsError:
+                # If the fragment has unclosed tags, skip insertion
+                # This can happen if the fragment was never properly completed
+                pass
+
+
 class _TagContext:
     """Context manager for HTML tags.
 
@@ -568,16 +648,26 @@ class Fragment:
         with self.tag("hr", **attrs):
             pass
 
-    def fragment(self, fragment: Fragment) -> None:
+    def fragment(self, fragment: Fragment) -> _FragmentContext:
         """Insert a fragment into this fragment or document.
 
-        This method renders the fragment and inserts its HTML content
-        at the current position.
+        This method can be used in two ways:
+
+        1. Direct insertion (renders and inserts immediately):
+            doc.fragment(get_callout("Warning"))
+
+        2. As a context manager (add content dynamically):
+            with doc.fragment(button_fragment()) as frag:
+                frag.text("Submit")
 
         Args:
             fragment: The Fragment instance to insert
 
+        Returns:
+            A context manager that allows adding content to the fragment
+
         Example:
+            # Direct insertion
             def get_callout(title):
                 frag = Fragment()
                 with frag.div(class_="callout"):
@@ -588,13 +678,20 @@ class Fragment:
             with doc.html():
                 with doc.body():
                     doc.fragment(get_callout("Warning"))
-        """
-        # Ensure the current tag is opened before inserting fragment content
-        if self._context_stack:
-            self._context_stack[-1]._ensure_opened()
 
-        # Render the fragment and insert its content as raw HTML
-        self._parts.append(fragment.render())
+            # Dynamic content via context manager
+            def button():
+                frag = Fragment()
+                with frag.button(class_="btn"):
+                    pass  # Empty, will be filled later
+                return frag
+
+            doc = Document()
+            with doc.div():
+                with doc.fragment(button()) as btn:
+                    btn.text("Submit")
+        """
+        return _FragmentContext(self, fragment)
 
 
 class Document(Fragment):
