@@ -116,10 +116,6 @@ class _FragmentContext:
         self._parent_context_stack: list[_TagContext] | None = None
         self._entered = False
 
-        # For immediate insertion (when not used as context manager)
-        # We insert on the next event loop, but we need a way to detect
-        # if __enter__ will be called. Since we can't, we'll handle this differently.
-
     def __enter__(self) -> Fragment:
         self._entered = True
 
@@ -154,7 +150,13 @@ class _FragmentContext:
         self._parent._parts.append(self._child.render())
 
     def __del__(self) -> None:
-        # If never entered as context manager, insert immediately
+        # For backward compatibility: if never entered as context manager,
+        # insert immediately when the object is garbage collected.
+        # NOTE: __del__ timing is not guaranteed in Python, so for predictable
+        # behavior, always use fragment() as a context manager:
+        #   with doc.fragment(frag): ...
+        # rather than relying on immediate insertion:
+        #   doc.fragment(frag)  # May not insert immediately!
         if not self._entered:
             try:
                 # Ensure the current tag is opened before inserting fragment content
