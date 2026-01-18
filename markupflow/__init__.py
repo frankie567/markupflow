@@ -8,6 +8,8 @@ from typing import Any
 
 __version__ = "0.0.1"
 
+AttrValue = str | int | float | bool | None
+
 
 class MarkupFlowError(Exception):
     """Base class for all markupflow exceptions."""
@@ -35,6 +37,7 @@ class UnclosedTagsError(MarkupFlowError):
 
 
 __all__ = [
+    "AttrValue",
     "Document",
     "document",
     "MarkupFlowError",
@@ -71,14 +74,14 @@ def _convert_attr_name(name: str) -> str:
     return _ATTR_NAME_CACHE[name]
 
 
-def _escape_attr_value(value: Any) -> str:
+def _escape_attr_value(value: AttrValue) -> str:
     """Escape an attribute value for safe HTML output."""
     if value is None:
         return ""
     return html.escape(str(value), quote=True)
 
 
-def _escape_text(text: Any) -> str:
+def _escape_text(text: AttrValue) -> str:
     """Escape text content for safe HTML output."""
     if text is None:
         return ""
@@ -99,7 +102,7 @@ class _TagContext:
         self,
         document: Document,
         tag_name: str,
-        attrs: dict[str, Any],
+        attrs: dict[str, AttrValue],
         self_closing: bool = False,
     ) -> None:
         self._document = document
@@ -128,7 +131,7 @@ class _TagContext:
             else:
                 self._document._parts.append(f"<{self._tag_name}{attr_str}>")
 
-    def add_attr(self, name: str, value: Any) -> None:
+    def add_attr(self, name: str, value: AttrValue) -> None:
         """Add an attribute to this tag context.
 
         Args:
@@ -200,7 +203,7 @@ class Document:
         self._tag_stack: list[str] = []
         self._context_stack: list[_TagContext] = []
 
-    def tag(self, tag_name: str, **attrs: Any) -> _TagContext:
+    def tag(self, tag_name: str, **attrs: AttrValue) -> _TagContext:
         """Create a tag context manager.
 
         Args:
@@ -240,7 +243,7 @@ class Document:
         context = _TagContext(self, tag_name, attrs, self_closing)
         return context
 
-    def text(self, content: Any) -> None:
+    def text(self, content: AttrValue) -> None:
         """Add text content to the document.
 
         Args:
@@ -255,7 +258,7 @@ class Document:
                 self._context_stack[-1]._ensure_opened()
             self._parts.append(_escape_text(content))
 
-    def raw(self, content: Any) -> None:
+    def raw(self, content: AttrValue) -> None:
         """Add raw HTML content to the document without escaping.
 
         WARNING: This method does not escape content. Only use with trusted input.
@@ -272,7 +275,7 @@ class Document:
                 self._context_stack[-1]._ensure_opened()
             self._parts.append(str(content))
 
-    def attr(self, name: str, value: Any) -> None:
+    def attr(self, name: str, value: AttrValue) -> None:
         """Add an attribute to the current tag.
 
         This method allows dynamic addition of attributes to the currently
@@ -323,155 +326,155 @@ class Document:
 
     # Shortcut methods for common HTML tags
 
-    def div(self, **attrs: Any) -> _TagContext:
+    def div(self, **attrs: AttrValue) -> _TagContext:
         """Create a div tag. Shortcut for tag('div', **attrs)."""
         return self.tag("div", **attrs)
 
-    def p(self, **attrs: Any) -> _TagContext:
+    def p(self, **attrs: AttrValue) -> _TagContext:
         """Create a p tag. Shortcut for tag('p', **attrs)."""
         return self.tag("p", **attrs)
 
-    def span(self, **attrs: Any) -> _TagContext:
+    def span(self, **attrs: AttrValue) -> _TagContext:
         """Create a span tag. Shortcut for tag('span', **attrs)."""
         return self.tag("span", **attrs)
 
-    def h1(self, **attrs: Any) -> _TagContext:
+    def h1(self, **attrs: AttrValue) -> _TagContext:
         """Create an h1 tag. Shortcut for tag('h1', **attrs)."""
         return self.tag("h1", **attrs)
 
-    def h2(self, **attrs: Any) -> _TagContext:
+    def h2(self, **attrs: AttrValue) -> _TagContext:
         """Create an h2 tag. Shortcut for tag('h2', **attrs)."""
         return self.tag("h2", **attrs)
 
-    def h3(self, **attrs: Any) -> _TagContext:
+    def h3(self, **attrs: AttrValue) -> _TagContext:
         """Create an h3 tag. Shortcut for tag('h3', **attrs)."""
         return self.tag("h3", **attrs)
 
-    def h4(self, **attrs: Any) -> _TagContext:
+    def h4(self, **attrs: AttrValue) -> _TagContext:
         """Create an h4 tag. Shortcut for tag('h4', **attrs)."""
         return self.tag("h4", **attrs)
 
-    def h5(self, **attrs: Any) -> _TagContext:
+    def h5(self, **attrs: AttrValue) -> _TagContext:
         """Create an h5 tag. Shortcut for tag('h5', **attrs)."""
         return self.tag("h5", **attrs)
 
-    def h6(self, **attrs: Any) -> _TagContext:
+    def h6(self, **attrs: AttrValue) -> _TagContext:
         """Create an h6 tag. Shortcut for tag('h6', **attrs)."""
         return self.tag("h6", **attrs)
 
-    def a(self, **attrs: Any) -> _TagContext:
+    def a(self, **attrs: AttrValue) -> _TagContext:
         """Create an a tag. Shortcut for tag('a', **attrs)."""
         return self.tag("a", **attrs)
 
-    def button(self, **attrs: Any) -> _TagContext:
+    def button(self, **attrs: AttrValue) -> _TagContext:
         """Create a button tag. Shortcut for tag('button', **attrs)."""
         return self.tag("button", **attrs)
 
-    def form(self, **attrs: Any) -> _TagContext:
+    def form(self, **attrs: AttrValue) -> _TagContext:
         """Create a form tag. Shortcut for tag('form', **attrs)."""
         return self.tag("form", **attrs)
 
-    def input(self, **attrs: Any) -> _TagContext:
+    def input(self, **attrs: AttrValue) -> _TagContext:
         """Create an input tag. Shortcut for tag('input', **attrs)."""
         return self.tag("input", **attrs)
 
-    def label(self, **attrs: Any) -> _TagContext:
+    def label(self, **attrs: AttrValue) -> _TagContext:
         """Create a label tag. Shortcut for tag('label', **attrs)."""
         return self.tag("label", **attrs)
 
-    def select(self, **attrs: Any) -> _TagContext:
+    def select(self, **attrs: AttrValue) -> _TagContext:
         """Create a select tag. Shortcut for tag('select', **attrs)."""
         return self.tag("select", **attrs)
 
-    def option(self, **attrs: Any) -> _TagContext:
+    def option(self, **attrs: AttrValue) -> _TagContext:
         """Create an option tag. Shortcut for tag('option', **attrs)."""
         return self.tag("option", **attrs)
 
-    def textarea(self, **attrs: Any) -> _TagContext:
+    def textarea(self, **attrs: AttrValue) -> _TagContext:
         """Create a textarea tag. Shortcut for tag('textarea', **attrs)."""
         return self.tag("textarea", **attrs)
 
-    def ul(self, **attrs: Any) -> _TagContext:
+    def ul(self, **attrs: AttrValue) -> _TagContext:
         """Create a ul tag. Shortcut for tag('ul', **attrs)."""
         return self.tag("ul", **attrs)
 
-    def ol(self, **attrs: Any) -> _TagContext:
+    def ol(self, **attrs: AttrValue) -> _TagContext:
         """Create an ol tag. Shortcut for tag('ol', **attrs)."""
         return self.tag("ol", **attrs)
 
-    def li(self, **attrs: Any) -> _TagContext:
+    def li(self, **attrs: AttrValue) -> _TagContext:
         """Create a li tag. Shortcut for tag('li', **attrs)."""
         return self.tag("li", **attrs)
 
-    def table(self, **attrs: Any) -> _TagContext:
+    def table(self, **attrs: AttrValue) -> _TagContext:
         """Create a table tag. Shortcut for tag('table', **attrs)."""
         return self.tag("table", **attrs)
 
-    def thead(self, **attrs: Any) -> _TagContext:
+    def thead(self, **attrs: AttrValue) -> _TagContext:
         """Create a thead tag. Shortcut for tag('thead', **attrs)."""
         return self.tag("thead", **attrs)
 
-    def tbody(self, **attrs: Any) -> _TagContext:
+    def tbody(self, **attrs: AttrValue) -> _TagContext:
         """Create a tbody tag. Shortcut for tag('tbody', **attrs)."""
         return self.tag("tbody", **attrs)
 
-    def tr(self, **attrs: Any) -> _TagContext:
+    def tr(self, **attrs: AttrValue) -> _TagContext:
         """Create a tr tag. Shortcut for tag('tr', **attrs)."""
         return self.tag("tr", **attrs)
 
-    def td(self, **attrs: Any) -> _TagContext:
+    def td(self, **attrs: AttrValue) -> _TagContext:
         """Create a td tag. Shortcut for tag('td', **attrs)."""
         return self.tag("td", **attrs)
 
-    def th(self, **attrs: Any) -> _TagContext:
+    def th(self, **attrs: AttrValue) -> _TagContext:
         """Create a th tag. Shortcut for tag('th', **attrs)."""
         return self.tag("th", **attrs)
 
-    def section(self, **attrs: Any) -> _TagContext:
+    def section(self, **attrs: AttrValue) -> _TagContext:
         """Create a section tag. Shortcut for tag('section', **attrs)."""
         return self.tag("section", **attrs)
 
-    def article(self, **attrs: Any) -> _TagContext:
+    def article(self, **attrs: AttrValue) -> _TagContext:
         """Create an article tag. Shortcut for tag('article', **attrs)."""
         return self.tag("article", **attrs)
 
-    def header(self, **attrs: Any) -> _TagContext:
+    def header(self, **attrs: AttrValue) -> _TagContext:
         """Create a header tag. Shortcut for tag('header', **attrs)."""
         return self.tag("header", **attrs)
 
-    def footer(self, **attrs: Any) -> _TagContext:
+    def footer(self, **attrs: AttrValue) -> _TagContext:
         """Create a footer tag. Shortcut for tag('footer', **attrs)."""
         return self.tag("footer", **attrs)
 
-    def nav(self, **attrs: Any) -> _TagContext:
+    def nav(self, **attrs: AttrValue) -> _TagContext:
         """Create a nav tag. Shortcut for tag('nav', **attrs)."""
         return self.tag("nav", **attrs)
 
-    def main(self, **attrs: Any) -> _TagContext:
+    def main(self, **attrs: AttrValue) -> _TagContext:
         """Create a main tag. Shortcut for tag('main', **attrs)."""
         return self.tag("main", **attrs)
 
-    def aside(self, **attrs: Any) -> _TagContext:
+    def aside(self, **attrs: AttrValue) -> _TagContext:
         """Create an aside tag. Shortcut for tag('aside', **attrs)."""
         return self.tag("aside", **attrs)
 
-    def strong(self, **attrs: Any) -> _TagContext:
+    def strong(self, **attrs: AttrValue) -> _TagContext:
         """Create a strong tag. Shortcut for tag('strong', **attrs)."""
         return self.tag("strong", **attrs)
 
-    def em(self, **attrs: Any) -> _TagContext:
+    def em(self, **attrs: AttrValue) -> _TagContext:
         """Create an em tag. Shortcut for tag('em', **attrs)."""
         return self.tag("em", **attrs)
 
-    def code(self, **attrs: Any) -> _TagContext:
+    def code(self, **attrs: AttrValue) -> _TagContext:
         """Create a code tag. Shortcut for tag('code', **attrs)."""
         return self.tag("code", **attrs)
 
-    def pre(self, **attrs: Any) -> _TagContext:
+    def pre(self, **attrs: AttrValue) -> _TagContext:
         """Create a pre tag. Shortcut for tag('pre', **attrs)."""
         return self.tag("pre", **attrs)
 
-    def img(self, **attrs: Any) -> None:
+    def img(self, **attrs: AttrValue) -> None:
         """Create an img tag. Shortcut for tag('img', **attrs).
 
         Note: This is a self-closing tag and doesn't need a context manager.
@@ -479,7 +482,7 @@ class Document:
         with self.tag("img", **attrs):
             pass
 
-    def br(self, **attrs: Any) -> None:
+    def br(self, **attrs: AttrValue) -> None:
         """Create a br tag. Shortcut for tag('br', **attrs).
 
         Note: This is a self-closing tag and doesn't need a context manager.
@@ -487,7 +490,7 @@ class Document:
         with self.tag("br", **attrs):
             pass
 
-    def hr(self, **attrs: Any) -> None:
+    def hr(self, **attrs: AttrValue) -> None:
         """Create an hr tag. Shortcut for tag('hr', **attrs).
 
         Note: This is a self-closing tag and doesn't need a context manager.
