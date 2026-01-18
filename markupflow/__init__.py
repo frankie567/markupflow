@@ -656,8 +656,7 @@ class Document(Fragment):
     """A minimal HTML document builder with context manager support.
 
     This class extends Fragment and provides an interface for building
-    complete HTML documents. It inherits all fragment functionality while
-    maintaining backward compatibility with the original Document API.
+    complete HTML documents. It inherits all fragment functionality.
 
     The Document class includes shortcuts for common HTML tags, allowing
     for more concise and readable code. It also supports dynamic attribute
