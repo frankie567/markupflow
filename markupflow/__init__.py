@@ -624,4 +624,4 @@ class Document(Fragment):
         html_output = doc.render()
     """
 
-    pass
+    __slots__ = ()
