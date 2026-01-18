@@ -8,6 +8,7 @@ import pytest
 
 from markupflow import (
     Document,
+    Fragment,
     MarkupFlowError,
     NoTagContextError,
     TagAlreadyOpenedError,
@@ -579,4 +580,258 @@ def test_classes_with_shortcuts():
 
     html = doc.render()
     expected = '<div class="container fluid"><h1 class="title large">Title</h1><p class="text muted">Description</p></div>'
+    assert html == expected
+
+
+def test_fragment_basic():
+    """Test basic fragment creation and rendering."""
+    fragment = Fragment()
+
+    with fragment.div(class_="callout"):
+        with fragment.strong():
+            fragment.text("Warning")
+
+    html = fragment.render()
+    expected = '<div class="callout"><strong>Warning</strong></div>'
+    assert html == expected
+
+
+def test_fragment_standalone():
+    """Test that fragments can be used standalone like documents."""
+    fragment = Fragment()
+
+    with fragment.ul():
+        with fragment.li():
+            fragment.text("Item 1")
+        with fragment.li():
+            fragment.text("Item 2")
+        with fragment.li():
+            fragment.text("Item 3")
+
+    html = fragment.render()
+    expected = "<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>"
+    assert html == expected
+
+
+def test_fragment_reusable_component():
+    """Test creating reusable fragment components."""
+
+    def get_callout(title: str, level: str = "info") -> Fragment:
+        frag = Fragment()
+        with frag.div(class_=f"callout callout-{level}"):
+            with frag.strong():
+                frag.text(title)
+        return frag
+
+    # Create multiple instances
+    warning = get_callout("Warning", "danger")
+    info = get_callout("Info", "info")
+
+    assert (
+        warning.render()
+        == '<div class="callout callout-danger"><strong>Warning</strong></div>'
+    )
+    assert (
+        info.render() == '<div class="callout callout-info"><strong>Info</strong></div>'
+    )
+
+
+def test_document_fragment_insertion():
+    """Test inserting fragments into documents."""
+
+    def get_callout(title: str) -> Fragment:
+        frag = Fragment()
+        with frag.div(class_="callout"):
+            frag.text(title)
+        return frag
+
+    doc = Document()
+    with doc.html():
+        with doc.body():
+            doc.fragment(get_callout("Warning"))
+
+    html = doc.render()
+    expected = '<html><body><div class="callout">Warning</div></body></html>'
+    assert html == expected
+
+
+def test_document_multiple_fragments():
+    """Test inserting multiple fragments into a document."""
+
+    def get_button(label: str, btn_type: str = "primary") -> Fragment:
+        frag = Fragment()
+        with frag.button(class_=f"btn btn-{btn_type}"):
+            frag.text(label)
+        return frag
+
+    doc = Document()
+    with doc.div(class_="button-group"):
+        doc.fragment(get_button("Save", "primary"))
+        doc.fragment(get_button("Cancel", "secondary"))
+        doc.fragment(get_button("Delete", "danger"))
+
+    html = doc.render()
+    expected = (
+        '<div class="button-group">'
+        '<button class="btn btn-primary">Save</button>'
+        '<button class="btn btn-secondary">Cancel</button>'
+        '<button class="btn btn-danger">Delete</button>'
+        "</div>"
+    )
+    assert html == expected
+
+
+def test_fragment_with_text_and_raw():
+    """Test fragments with text and raw content."""
+    fragment = Fragment()
+
+    with fragment.div():
+        fragment.text("Safe <text>")
+        fragment.raw("<em>raw</em>")
+
+    html = fragment.render()
+    expected = "<div>Safe &lt;text&gt;<em>raw</em></div>"
+    assert html == expected
+
+
+def test_fragment_with_attr_and_classes():
+    """Test fragments with dynamic attributes and classes."""
+    fragment = Fragment()
+
+    is_active = True
+
+    with fragment.div():
+        fragment.attr("id", "main")
+        if is_active:
+            fragment.classes("active")
+        fragment.text("Content")
+
+    html = fragment.render()
+    expected = '<div id="main" class="active">Content</div>'
+    assert html == expected
+
+
+def test_nested_fragments():
+    """Test that fragments can contain other fragments."""
+
+    def get_list_item(text: str) -> Fragment:
+        frag = Fragment()
+        with frag.li():
+            frag.text(text)
+        return frag
+
+    fragment = Fragment()
+    with fragment.ul():
+        fragment.fragment(get_list_item("First"))
+        fragment.fragment(get_list_item("Second"))
+        fragment.fragment(get_list_item("Third"))
+
+    html = fragment.render()
+    expected = "<ul><li>First</li><li>Second</li><li>Third</li></ul>"
+    assert html == expected
+
+
+def test_fragment_reuse():
+    """Test that fragments can be cleared and reused."""
+    fragment = Fragment()
+
+    # First use
+    with fragment.p():
+        fragment.text("First")
+    html1 = fragment.render()
+
+    # Clear and reuse
+    fragment.clear()
+    with fragment.h1():
+        fragment.text("Second")
+    html2 = fragment.render()
+
+    assert html1 == "<p>First</p>"
+    assert html2 == "<h1>Second</h1>"
+
+
+def test_fragment_all_shortcuts():
+    """Test that fragments have all tag shortcuts."""
+    fragment = Fragment()
+
+    with fragment.div():
+        with fragment.h1():
+            fragment.text("Title")
+        with fragment.p():
+            fragment.text("Paragraph")
+        fragment.br()
+        fragment.img(src="test.jpg")
+
+    html = fragment.render()
+    assert "<div>" in html
+    assert "<h1>Title</h1>" in html
+    assert "<p>Paragraph</p>" in html
+    assert "<br />" in html
+    assert '<img src="test.jpg" />' in html
+
+
+def test_fragment_with_complex_structure():
+    """Test fragments with complex nested structures."""
+
+    def get_card(title: str, content: str) -> Fragment:
+        frag = Fragment()
+        with frag.div(class_="card"):
+            with frag.div(class_="card-header"):
+                with frag.h3():
+                    frag.text(title)
+            with frag.div(class_="card-body"):
+                with frag.p():
+                    frag.text(content)
+        return frag
+
+    doc = Document()
+    with doc.div(class_="container"):
+        doc.fragment(get_card("Card 1", "Content 1"))
+        doc.fragment(get_card("Card 2", "Content 2"))
+
+    html = doc.render()
+    assert '<div class="card">' in html
+    assert '<div class="card-header">' in html
+    assert "<h3>Card 1</h3>" in html
+    assert "<p>Content 1</p>" in html
+    assert "<h3>Card 2</h3>" in html
+    assert "<p>Content 2</p>" in html
+
+
+def test_fragment_empty():
+    """Test that empty fragments render correctly."""
+    fragment = Fragment()
+    html = fragment.render()
+    assert html == ""
+
+
+def test_fragment_inheritance():
+    """Test that Document properly inherits from Fragment."""
+    # Document should have all Fragment methods
+    doc = Document()
+    assert isinstance(doc, Fragment)
+    assert hasattr(doc, "fragment")
+    assert hasattr(doc, "tag")
+    assert hasattr(doc, "text")
+    assert hasattr(doc, "raw")
+    assert hasattr(doc, "attr")
+    assert hasattr(doc, "classes")
+
+
+def test_fragment_composition_example():
+    """Test the example from the issue description."""
+
+    def get_callout(title: str) -> Fragment:
+        fragment = Fragment()
+        with fragment.div():
+            fragment.text(title)
+        return fragment
+
+    doc = Document()
+    with doc.html():
+        with doc.body():
+            doc.fragment(get_callout("Warning"))
+
+    html = doc.render()
+    expected = "<html><body><div>Warning</div></body></html>"
     assert html == expected
