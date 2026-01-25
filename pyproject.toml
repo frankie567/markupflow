@@ -2,7 +2,7 @@
 [project]
 name = "markupflow"
 authors = [
-  { name = "markupflow", email = "francois@francoisvoron.com" }
+  { name = "markupflow", email = "hello@fvoron.com" }
 ]
 description = "Generate HTML, the Pythonic way"
 readme = "README.md"
